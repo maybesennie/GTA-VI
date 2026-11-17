@@ -2,6 +2,14 @@
 
 A companion app for Sennie and Simphiwe's 48–72 hour GTA VI marathon. React + Vite, no backend, no accounts. Everything saves in your browser (LocalStorage).
 
+## Install the Windows app
+
+Download `GTA-VI-The-Marathon-Setup-1.0.0-x64.exe` from the [v1.0.0 release](https://github.com/maybesennie/GTA-VI/releases/tag/v1.0.0), run the installer, and follow the prompts. The installer is per-user and does not require administrator access. It adds Start menu and optional desktop shortcuts.
+
+The installer is not code-signed, so Windows SmartScreen may show a warning before installation.
+
+The Windows app stores its data locally, separately from the website in your browser. Names, schedule, bingo progress, and other settings do not sync between installations.
+
 ## Run it on Windows with VS Code
 
 1. Install **Node.js LTS** from https://nodejs.org (tick the default options), then restart VS Code.
@@ -25,6 +33,8 @@ To stop the app press `Ctrl + C` in the terminal.
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build |
 | `npm test` | Run the automated tests |
+| `npm run app:preview` | Build and open the desktop app |
+| `npm run package:win` | Build the Windows installer into `release/` |
 
 ### If something goes wrong
 

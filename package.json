@@ -4,11 +4,40 @@
   "version": "1.0.0",
   "description": "GTA VI: The Marathon — a companion app for Sennie and Simphiwe",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "app:preview": "npm run build && electron .",
+    "package:win": "npm run build && electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "net.maybesennie.gtavimarathon",
+    "productName": "GTA VI The Marathon",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "electron/app.ico",
+      "artifactName": "GTA-VI-The-Marathon-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GTA VI The Marathon",
+      "deleteAppDataOnUninstall": false
+    }
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
@@ -20,6 +49,8 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0",
     "jsdom": "^25.0.1",
     "vite": "^5.4.11",
     "vitest": "^2.1.8"
