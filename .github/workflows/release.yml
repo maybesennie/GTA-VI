@@ -23,12 +23,26 @@ jobs:
       - name: Publish GitHub release
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $tag = $env:GITHUB_REF_NAME
           if ($env:GITHUB_REF_TYPE -ne 'tag') { $tag = "v$version" }
           $installers = Get-ChildItem release\*.exe | Where-Object { $_.Name -notlike '*.__uninstaller.exe' }
           if (-not $installers) { throw 'Windows installer was not created.' }
-          $files = $installers | ForEach-Object { "release/$($_.Name)" }
-          gh release create "$tag" @files --generate-notes --title "GTA VI: The Marathon $tag"
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $releaseBody = @{
+            tag_name = $tag
+            name = "GTA VI: The Marathon $tag"
+            generate_release_notes = $true
+          } | ConvertTo-Json
+          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases" -Method Post -Headers $headers -ContentType 'application/json' -Body $releaseBody
+          $uploadBaseUrl = $release.upload_url.Substring(0, $release.upload_url.IndexOf('{'))
+          foreach ($installer in $installers) {
+            $assetName = [uri]::EscapeDataString($installer.Name)
+            Invoke-RestMethod -Uri "$uploadBaseUrl?name=$assetName" -Method Post -Headers $headers -ContentType 'application/octet-stream' -InFile $installer.FullName
+          }
