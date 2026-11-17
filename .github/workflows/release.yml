@@ -28,6 +28,7 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $tag = $env:GITHUB_REF_NAME
           if ($env:GITHUB_REF_TYPE -ne 'tag') { $tag = "v$version" }
-          $installers = Get-ChildItem release\*.exe | ForEach-Object { $_.FullName }
+          $installers = Get-ChildItem release\*.exe | Where-Object { $_.Name -notlike '*.__uninstaller.exe' }
           if (-not $installers) { throw 'Windows installer was not created.' }
-          gh release create "$tag" @installers --generate-notes --title "GTA VI: The Marathon $tag"
+          $files = $installers | ForEach-Object { "release/$($_.Name)" }
+          gh release create "$tag" @files --generate-notes --title "GTA VI: The Marathon $tag"
