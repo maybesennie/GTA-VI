@@ -35,14 +35,22 @@ jobs:
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
-          $releaseBody = @{
-            tag_name = $tag
-            name = "GTA VI: The Marathon $tag"
-            generate_release_notes = $true
-          } | ConvertTo-Json
-          $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases" -Method Post -Headers $headers -ContentType 'application/json' -Body $releaseBody
+          $releaseUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/tags/$tag"
+          try {
+            $release = Invoke-RestMethod -Uri $releaseUrl -Method Get -Headers $headers
+          } catch {
+            if (-not $_.Exception.Response -or [int]$_.Exception.Response.StatusCode -ne 404) { throw }
+            $releaseBody = @{
+              tag_name = $tag
+              name = "GTA VI: The Marathon $tag"
+              generate_release_notes = $true
+            } | ConvertTo-Json
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases" -Method Post -Headers $headers -ContentType 'application/json' -Body $releaseBody
+          }
           $uploadBaseUrl = $release.upload_url.Substring(0, $release.upload_url.IndexOf('{'))
+          $existingAssets = @($release.assets | ForEach-Object { $_.name })
           foreach ($installer in $installers) {
+            if ($existingAssets -contains $installer.Name) { continue }
             $assetName = [uri]::EscapeDataString($installer.Name)
-            Invoke-RestMethod -Uri "$uploadBaseUrl?name=$assetName" -Method Post -Headers $headers -ContentType 'application/octet-stream' -InFile $installer.FullName
+            Invoke-RestMethod -Uri "${uploadBaseUrl}?name=$assetName" -Method Post -Headers $headers -ContentType 'application/octet-stream' -InFile $installer.FullName
           }
