@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "app:preview": "npm run build && electron .",
-    "package:win": "npm run build && electron-builder --win nsis --x64"
+    "package:win": "npm run build && electron-builder --win nsis --x64 --publish never"
   },
   "build": {
     "appId": "net.maybesennie.gtavimarathon",

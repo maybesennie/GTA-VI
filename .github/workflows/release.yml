@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -24,6 +25,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = $env:GITHUB_REF_NAME
+          if ($env:GITHUB_REF_TYPE -ne 'tag') { $tag = "v$version" }
           $installers = Get-ChildItem release\*.exe | ForEach-Object { $_.FullName }
           if (-not $installers) { throw 'Windows installer was not created.' }
-          gh release create "$env:GITHUB_REF_NAME" @installers --generate-notes --title "GTA VI: The Marathon $env:GITHUB_REF_NAME"
+          gh release create "$tag" @installers --generate-notes --title "GTA VI: The Marathon $tag"
