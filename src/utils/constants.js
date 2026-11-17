@@ -30,5 +30,6 @@ export const STORAGE_KEYS = {
   timer: 'gta6-marathon:v1:timer',
   handovers: 'gta6-marathon:v1:handovers',
   notes: 'gta6-marathon:v1:notes',
+  settings: 'gta6-marathon:v1:settings',
   splash: 'gta6-marathon:v1:splash',
 }

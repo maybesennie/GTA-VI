@@ -3,8 +3,10 @@ import { AlertTriangle } from 'lucide-react'
 import Modal from './Modal.jsx'
 import { TYPE_ICONS } from './icons.js'
 import { ACTIVITY_ORDER, ACTIVITY_TYPES, findConflicts, validateShift } from '../utils/schedule.js'
-import { ASSIGNABLE, MINUTE, PLAYERS } from '../utils/constants.js'
+import { ASSIGNABLE, MINUTE } from '../utils/constants.js'
 import { formatDuration, fromInputValue, toInputValue } from '../utils/time.js'
+import { useStore } from '../context/StoreContext.jsx'
+import { playerName } from '../utils/settings.js'
 
 const DURATION_CHIPS = [
   [30, '30m'],
@@ -17,6 +19,7 @@ const DURATION_CHIPS = [
 ]
 
 export default function ShiftForm({ mode, initial, shifts, onSave, onClose }) {
+  const { settings } = useStore()
   const formId = useId()
   const [player, setPlayer] = useState(initial.player)
   const [type, setType] = useState(initial.type)
@@ -74,7 +77,7 @@ export default function ShiftForm({ mode, initial, shifts, onSave, onClose }) {
             {ASSIGNABLE.map((id) => (
               <label key={id} className={`segmented__item segmented__item--${id}`}>
                 <input type="radio" name={`${formId}-player`} value={id} checked={player === id} onChange={() => setPlayer(id)} />
-                <span>{PLAYERS[id].name}</span>
+                <span>{playerName(id, settings)}</span>
               </label>
             ))}
           </div>
@@ -98,19 +101,23 @@ export default function ShiftForm({ mode, initial, shifts, onSave, onClose }) {
           </div>
         </fieldset>
 
-        <div className="field">
-          <label className="field__label" htmlFor={`${formId}-title`}>
-            Title <span className="field__optional">optional</span>
-          </label>
-          <input
-            id={`${formId}-title`}
-            className="input"
-            value={title}
-            maxLength={60}
-            placeholder={ACTIVITY_TYPES[type].label}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
+        {settings.streamerMode ? (
+          <p className="privacy-message">Custom shift titles and notes are hidden while streamer mode is on.</p>
+        ) : (
+          <div className="field">
+            <label className="field__label" htmlFor={`${formId}-title`}>
+              Title <span className="field__optional">optional</span>
+            </label>
+            <input
+              id={`${formId}-title`}
+              className="input"
+              value={title}
+              maxLength={60}
+              placeholder={ACTIVITY_TYPES[type].label}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className="field-row">
           <div className="field">
@@ -171,19 +178,21 @@ export default function ShiftForm({ mode, initial, shifts, onSave, onClose }) {
           </p>
         )}
 
-        <div className="field">
-          <label className="field__label" htmlFor={`${formId}-notes`}>
-            Notes <span className="field__optional">optional</span>
-          </label>
-          <textarea
-            id={`${formId}-notes`}
-            className="input input--area"
-            rows={3}
-            maxLength={300}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </div>
+        {!settings.streamerMode && (
+          <div className="field">
+            <label className="field__label" htmlFor={`${formId}-notes`}>
+              Notes <span className="field__optional">optional</span>
+            </label>
+            <textarea
+              id={`${formId}-notes`}
+              className="input input--area"
+              rows={3}
+              maxLength={300}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        )}
 
         <label className="toggle">
           <input type="checkbox" checked={flexible} onChange={(e) => setFlexible(e.target.checked)} />

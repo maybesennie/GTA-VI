@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALL_TILES,
+  addCustomTile,
   BOARD_TEXT,
   CENTER_ID,
   CENTER_INDEX,
@@ -9,12 +10,16 @@ import {
   TILE_BY_ID,
   bingoProgress,
   completedLines,
+  deleteCustomTile,
   defaultBingoState,
+  resetBingoState,
   newlyCompletedLines,
   poolTileIds,
   replaceTile,
   shuffleBoard,
   toggleTile,
+  tileById,
+  updateCustomTile,
   validateBingoState,
 } from '../utils/bingo.js'
 
@@ -160,5 +165,33 @@ describe('bingo state validation', () => {
     const moved = defaultBingoState()
     ;[moved.cells[0], moved.cells[12]] = [moved.cells[12], moved.cells[0]]
     expect(validateBingoState(moved)).toBe(false)
+  })
+})
+
+describe('custom bingo challenges', () => {
+  it('adds, edits, swaps, validates and resets custom challenges without losing them', () => {
+    const added = addCustomTile(defaultBingoState(), 'Find a hidden landmark')
+    const customId = added.customTiles[0].id
+    expect(poolTileIds(added)).toContain(customId)
+    expect(validateBingoState(added)).toBe(true)
+    expect(addCustomTile(added, 'find a hidden landmark')).toBe(added)
+
+    const onBoard = replaceTile(added, 0, customId)
+    expect(tileById(onBoard, onBoard.cells[0]).text).toBe('Find a hidden landmark')
+    expect(validateBingoState(onBoard)).toBe(true)
+    expect(deleteCustomTile(onBoard, customId)).toBe(onBoard)
+
+    const renamed = updateCustomTile(onBoard, customId, 'Find the lighthouse')
+    expect(tileById(renamed, customId).text).toBe('Find the lighthouse')
+    const reset = resetBingoState(renamed)
+    expect(reset.cells).toEqual(defaultBingoState().cells)
+    expect(reset.customTiles).toEqual(renamed.customTiles)
+    expect(deleteCustomTile(reset, customId).customTiles).toEqual([])
+  })
+
+  it('keeps older saved bingo states valid without a custom challenge list', () => {
+    const legacy = defaultBingoState()
+    delete legacy.customTiles
+    expect(validateBingoState(legacy)).toBe(true)
   })
 })

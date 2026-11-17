@@ -1,9 +1,8 @@
 import { memo } from 'react'
 import { Check, Play, Repeat } from 'lucide-react'
-import { CENTER_INDEX, TILE_BY_ID } from '../utils/bingo.js'
+import { CENTER_INDEX, tileById } from '../utils/bingo.js'
 
-const Tile = memo(function Tile({ index, tileId, done, inLine, pop, swapMode, onPress }) {
-  const tile = TILE_BY_ID[tileId]
+const Tile = memo(function Tile({ index, tileId, tile, done, inLine, pop, swapMode, onPress }) {
   const center = index === CENTER_INDEX
   const swappable = swapMode && !center
   const classes = [
@@ -41,7 +40,7 @@ const Tile = memo(function Tile({ index, tileId, done, inLine, pop, swapMode, on
   )
 })
 
-export default function BingoBoard({ cells, done, lineIndices, popIndex, swapMode, onPress }) {
+export default function BingoBoard({ cells, customTiles = [], done, lineIndices, popIndex, swapMode, onPress }) {
   return (
     <div className="board" role="group" aria-label="GTA VI bingo board, 5 by 5">
       {cells.map((tileId, index) => (
@@ -49,6 +48,7 @@ export default function BingoBoard({ cells, done, lineIndices, popIndex, swapMod
           key={`${index}-${tileId}`}
           index={index}
           tileId={tileId}
+          tile={tileById({ customTiles }, tileId)}
           done={Boolean(done[tileId])}
           inLine={lineIndices.has(index)}
           pop={popIndex === index}

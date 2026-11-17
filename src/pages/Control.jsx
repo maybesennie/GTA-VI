@@ -8,8 +8,9 @@ import StatusPill from '../components/StatusPill.jsx'
 import { TYPE_ICONS } from '../components/icons.js'
 import { ACTIVITY_TYPES, sortShifts } from '../utils/schedule.js'
 import { elapsedMs } from '../utils/marathon.js'
-import { HOUR, PLAYER_IDS, PLAYERS, TARGET_MAX_HOURS, TARGET_MIN_HOURS } from '../utils/constants.js'
+import { HOUR, PLAYER_IDS, TARGET_MAX_HOURS, TARGET_MIN_HOURS } from '../utils/constants.js'
 import { formatDateTime, formatDayLabel, formatDuration, formatHMS, formatTime, toHours } from '../utils/time.js'
+import { playerName } from '../utils/settings.js'
 
 const EVENT_LABELS = { start: 'Marathon started', pause: 'Paused', resume: 'Resumed', end: 'Marathon ended' }
 
@@ -125,7 +126,7 @@ function MarathonClock() {
 }
 
 function Handovers() {
-  const { handovers, recordHandover, deleteHandover } = useStore()
+  const { handovers, recordHandover, deleteHandover, settings } = useStore()
   const [note, setNote] = useState('')
   const entries = useMemo(
     () =>
@@ -162,6 +163,8 @@ function Handovers() {
         <input
           id="handover-note"
           className="input"
+          type={settings.streamerMode ? 'password' : 'text'}
+          autoComplete="off"
           value={note}
           maxLength={120}
           placeholder="Where you stopped, what's next"
@@ -171,7 +174,7 @@ function Handovers() {
       <div className="handover-buttons">
         {PLAYER_IDS.map((id) => (
           <button key={id} type="button" className={`btn btn--handover btn--handover-${id}`} onClick={() => record(id)}>
-            {PLAYERS[id].name} takes over
+            {playerName(id, settings)} takes over
           </button>
         ))}
       </div>
@@ -185,19 +188,24 @@ function Handovers() {
             <li key={h.id} className={`log__item log__item--${h.player}`}>
               <div className="log__main">
                 <p>
-                  <PlayerBadge player={h.player} /> took over{h.from && h.from !== h.player ? <> from {PLAYERS[h.from].name}</> : null}
+                  <PlayerBadge player={h.player} /> took over
+                  {h.from && h.from !== h.player ? <> from {playerName(h.from, settings)}</> : null}
                 </p>
                 <p className="log__meta">
                   {formatDateTime(h.at)}
                   {h.elapsedMs !== null && <> · marathon time {formatHMS(h.elapsedMs)}</>}
                 </p>
-                {h.note && <p className="log__note">{h.note}</p>}
+                {h.note && (
+                  <p className="log__note">
+                    {settings.streamerMode ? 'Handover note hidden in streamer mode.' : h.note}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
                 className="icon-btn icon-btn--danger"
                 onClick={() => deleteHandover(h.id)}
-                aria-label={`Delete handover to ${PLAYERS[h.player].name} at ${formatTime(h.at)}`}
+                aria-label={`Delete handover to ${playerName(h.player, settings)} at ${formatTime(h.at)}`}
               >
                 <Trash2 size={15} aria-hidden="true" />
               </button>
@@ -210,7 +218,7 @@ function Handovers() {
 }
 
 function Notes() {
-  const { notes, addNote, deleteNote } = useStore()
+  const { notes, addNote, deleteNote, settings } = useStore()
   const [author, setAuthor] = useState('sennie')
   const [text, setText] = useState('')
 
@@ -231,23 +239,27 @@ function Notes() {
           {PLAYER_IDS.map((id) => (
             <label key={id} className={`segmented__item segmented__item--${id}`}>
               <input type="radio" name="note-author" value={id} checked={author === id} onChange={() => setAuthor(id)} />
-              <span>{PLAYERS[id].name}</span>
+              <span>{playerName(id, settings)}</span>
             </label>
           ))}
         </div>
         <label className="visually-hidden" htmlFor="note-text">
           Write a note
         </label>
-        <textarea
-          id="note-text"
-          className="input input--area"
-          rows={3}
-          maxLength={500}
-          value={text}
-          placeholder="Mission progress, reminders, things for the other player"
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button type="submit" className="btn btn--primary" disabled={!text.trim()}>
+        {settings.streamerMode ? (
+          <p className="privacy-message">Turn off streamer mode to write a private note.</p>
+        ) : (
+          <textarea
+            id="note-text"
+            className="input input--area"
+            rows={3}
+            maxLength={500}
+            value={text}
+            placeholder="Mission progress, reminders, things for the other player"
+            onChange={(e) => setText(e.target.value)}
+          />
+        )}
+        <button type="submit" className="btn btn--primary" disabled={settings.streamerMode || !text.trim()}>
           Add note
         </button>
       </form>
@@ -262,14 +274,16 @@ function Notes() {
                 <p>
                   <PlayerBadge player={n.author} />
                 </p>
-                <p className="log__note log__note--body">{n.text}</p>
+                <p className="log__note log__note--body">
+                  {settings.streamerMode ? 'Private note hidden in streamer mode.' : n.text}
+                </p>
                 <p className="log__meta">{formatDateTime(n.at)}</p>
               </div>
               <button
                 type="button"
                 className="icon-btn icon-btn--danger"
                 onClick={() => deleteNote(n.id)}
-                aria-label={`Delete note by ${PLAYERS[n.author].name}`}
+                aria-label={`Delete note by ${playerName(n.author, settings)}`}
               >
                 <Trash2 size={15} aria-hidden="true" />
               </button>
@@ -283,7 +297,7 @@ function Notes() {
 
 function ShiftHistory() {
   const now = useNow()
-  const { shifts } = useStore()
+  const { shifts, settings } = useStore()
   const finished = sortShifts(shifts)
     .filter((s) => s.end <= now)
     .reverse()
@@ -304,7 +318,7 @@ function ShiftHistory() {
                 <PlayerBadge player={s.player} />
                 <span className="history__what">
                   <Icon size={14} aria-hidden="true" />
-                  {s.title || ACTIVITY_TYPES[s.type].label}
+                  {settings.streamerMode ? ACTIVITY_TYPES[s.type].label : s.title || ACTIVITY_TYPES[s.type].label}
                 </span>
                 <span className="history__when">
                   {formatDayLabel(s.start)} · {formatTime(s.start)} to {formatTime(s.end)}

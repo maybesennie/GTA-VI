@@ -1,0 +1,31 @@
+.map-card {
+  padding: 8px;
+  overflow: hidden;
+}
+
+.map-frame {
+  display: block;
+  width: 100%;
+  height: min(74vh, 820px);
+  min-height: 420px;
+  border: 0;
+  border-radius: calc(var(--radius) - 6px);
+  background: #101018;
+}
+
+.map-credit {
+  margin-top: -10px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.map-credit a {
+  color: var(--turq);
+}
+
+@media (max-width: 639px) {
+  .map-frame {
+    height: 68vh;
+    min-height: 360px;
+  }
+}

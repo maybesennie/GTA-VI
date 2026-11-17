@@ -9,6 +9,8 @@ import './styles/calendar.css'
 import './styles/bingo.css'
 import './styles/checklist.css'
 import './styles/control.css'
+import './styles/settings.css'
+import './styles/map.css'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

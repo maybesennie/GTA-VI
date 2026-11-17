@@ -6,10 +6,11 @@ import StatCard from '../components/StatCard.jsx'
 import StatusPill from '../components/StatusPill.jsx'
 import ProgressRing from '../components/ProgressRing.jsx'
 import { bingoProgress } from '../utils/bingo.js'
+import { playerName } from '../utils/settings.js'
 import { overallProgress } from '../utils/checklist.js'
 import { elapsedMs } from '../utils/marathon.js'
 import { currentGamingShift, nextRotation } from '../utils/schedule.js'
-import { LAUNCH_AT, PLAYERS, TARGET_MAX_HOURS, TARGET_MIN_HOURS, WARMUP_AT, HOUR } from '../utils/constants.js'
+import { LAUNCH_AT, TARGET_MAX_HOURS, TARGET_MIN_HOURS, WARMUP_AT, HOUR } from '../utils/constants.js'
 import {
   formatDateTime,
   formatDuration,
@@ -130,7 +131,7 @@ function TargetBar({ elapsed }) {
 
 export default function Overview() {
   const now = useNow()
-  const { shifts, timer, bingo, checklist, handovers } = useStore()
+  const { shifts, timer, bingo, checklist, handovers, settings } = useStore()
 
   const elapsed = elapsedMs(timer, now)
   const bingoStats = bingoProgress(bingo)
@@ -177,7 +178,7 @@ export default function Overview() {
         <StatCard
           icon={Gamepad2}
           label="Player on duty"
-          value={onDuty ? PLAYERS[onDuty.player].name : 'Nobody yet'}
+          value={onDuty ? playerName(onDuty.player, settings) : 'Nobody yet'}
           sub={
             onDuty
               ? `Until ${formatTime(onDuty.end)} · ${formatDuration(onDuty.end - now)} left`
@@ -188,14 +189,14 @@ export default function Overview() {
           linkLabel="Open calendar"
         >
           {loggedDiffers && (
-            <p className="stat__aside">Logged at the controller: {PLAYERS[lastHandover.player].name}</p>
+            <p className="stat__aside">Logged at the controller: {playerName(lastHandover.player, settings)}</p>
           )}
         </StatCard>
 
         <StatCard
           icon={Repeat}
           label="Next rotation"
-          value={rotation ? PLAYERS[rotation.player].name : 'None scheduled'}
+          value={rotation ? playerName(rotation.player, settings) : 'None scheduled'}
           sub={
             rotation
               ? `${formatDateTime(rotation.start)} · in ${

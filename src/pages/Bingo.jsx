@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Repeat, RotateCcw, Shuffle, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Pencil, Plus, Repeat, RotateCcw, Shuffle, Sparkles, Trash2 } from 'lucide-react'
 import { useStore } from '../context/StoreContext.jsx'
 import BingoBoard from '../components/BingoBoard.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
@@ -8,15 +8,20 @@ import ProgressBar from '../components/ProgressBar.jsx'
 import WinCelebration from '../components/WinCelebration.jsx'
 import {
   CENTER_INDEX,
-  TILE_BY_ID,
+  addCustomTile,
   bingoProgress,
   completedLines,
-  defaultBingoState,
+  deleteCustomTile,
+  MAX_CUSTOM_TILES,
+  MAX_TILE_TEXT_LENGTH,
   newlyCompletedLines,
   poolTileIds,
   replaceTile,
+  resetBingoState,
   shuffleBoard,
+  tileById,
   toggleTile,
+  updateCustomTile,
 } from '../utils/bingo.js'
 
 export default function Bingo() {
@@ -27,7 +32,15 @@ export default function Bingo() {
   const [confirm, setConfirm] = useState(null) // 'reset' | 'shuffle'
   const [includePool, setIncludePool] = useState(false)
   const [picker, setPicker] = useState(null) // { kind: 'cell', index } | { kind: 'pool', tileId }
+  const [customText, setCustomText] = useState('')
+  const [customError, setCustomError] = useState('')
+  const [editingTile, setEditingTile] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [editError, setEditError] = useState('')
+  const [deleteTileId, setDeleteTileId] = useState(null)
   const popTimer = useRef(null)
+  const customInputId = useId()
+  const editInputId = useId()
 
   useEffect(() => () => clearTimeout(popTimer.current), [])
 
@@ -35,6 +48,31 @@ export default function Bingo() {
   const lines = useMemo(() => completedLines(bingo.cells, bingo.done), [bingo])
   const lineIndices = useMemo(() => new Set(lines.flatMap((l) => l.indices)), [lines])
   const pool = poolTileIds(bingo)
+  const boardTileIds = new Set(bingo.cells)
+
+  const addCustomChallenge = (event) => {
+    event.preventDefault()
+    const next = addCustomTile(bingo, customText)
+    if (next === bingo) {
+      setCustomError('Enter a unique challenge. Custom challenges are limited to 60 characters and 50 items.')
+      return
+    }
+    setBingo(next)
+    setCustomText('')
+    setCustomError('')
+  }
+
+  const saveCustomChallenge = (event) => {
+    event.preventDefault()
+    const next = updateCustomTile(bingo, editingTile, editText)
+    if (next === bingo) {
+      setEditError('Enter a unique challenge name.')
+      return
+    }
+    setBingo(next)
+    setEditingTile(null)
+    setEditError('')
+  }
 
   const handlePress = useCallback(
     (index) => {
@@ -58,7 +96,7 @@ export default function Bingo() {
   const closeWin = useCallback(() => setWin(null), [])
 
   const doReset = () => {
-    setBingo(defaultBingoState())
+    setBingo(resetBingoState(bingo))
     setConfirm(null)
     setSwapMode(false)
   }
@@ -119,6 +157,7 @@ export default function Bingo() {
           )}
           <BingoBoard
             cells={bingo.cells}
+            customTiles={bingo.customTiles}
             done={bingo.done}
             lineIndices={lineIndices}
             popIndex={popIndex}
@@ -157,18 +196,90 @@ export default function Bingo() {
             <ul className="pool__list">
               {pool.map((id) => (
                 <li key={id} className="pool__item">
-                  <span>{TILE_BY_ID[id].text}</span>
+                  <span>{tileById(bingo, id).text}</span>
                   <button
                     type="button"
                     className="btn btn--small btn--ghost"
                     onClick={() => setPicker({ kind: 'pool', tileId: id })}
-                    aria-label={`Swap in ${TILE_BY_ID[id].text}`}
+                    aria-label={`Swap in ${tileById(bingo, id).text}`}
                   >
                     Swap in
                   </button>
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="card custom-challenges" aria-labelledby="custom-challenges-title">
+            <h2 id="custom-challenges-title" className="section-title">Your challenges</h2>
+            <p className="pool__hint">Write your own challenge, then swap it onto the board from the optional pool.</p>
+            <form className="custom-challenges__form" onSubmit={addCustomChallenge}>
+              <label className="field__label" htmlFor={customInputId}>New challenge</label>
+              <div className="custom-challenges__add">
+                <input
+                  id={customInputId}
+                  className="input"
+                  value={customText}
+                  maxLength={MAX_TILE_TEXT_LENGTH}
+                  placeholder="e.g. Find a hidden landmark"
+                  onChange={(event) => {
+                    setCustomText(event.target.value)
+                    setCustomError('')
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="btn btn--primary"
+                  disabled={!customText.trim() || (bingo.customTiles || []).length >= MAX_CUSTOM_TILES}
+                >
+                  <Plus size={16} aria-hidden="true" />
+                  Add
+                </button>
+              </div>
+              {customError && <p className="field__error" role="alert">{customError}</p>}
+              <p className="field__hint">{(bingo.customTiles || []).length} of {MAX_CUSTOM_TILES} custom challenges</p>
+            </form>
+            {(bingo.customTiles || []).length > 0 ? (
+              <ul className="custom-challenges__list">
+                {bingo.customTiles.map((tile) => {
+                  const onBoard = boardTileIds.has(tile.id)
+                  return (
+                    <li key={tile.id} className="custom-challenges__item">
+                      <div>
+                        <span>{tile.text}</span>
+                        <span className="custom-challenges__status">{onBoard ? 'On board' : 'In pool'}</span>
+                      </div>
+                      <div className="custom-challenges__actions">
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`Edit challenge ${tile.text}`}
+                          onClick={() => {
+                            setEditingTile(tile.id)
+                            setEditText(tile.text)
+                            setEditError('')
+                          }}
+                        >
+                          <Pencil size={15} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--danger"
+                          aria-label={`Delete challenge ${tile.text}`}
+                          disabled={onBoard}
+                          title={onBoard ? 'Swap this challenge off the board before deleting it' : undefined}
+                          onClick={() => setDeleteTileId(tile.id)}
+                        >
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <p className="empty-inline">Your custom challenges will appear here.</p>
+            )}
           </section>
         </aside>
       </div>
@@ -178,7 +289,7 @@ export default function Bingo() {
       {confirm === 'reset' && (
         <ConfirmDialog
           title="Reset the bingo board?"
-          message="All progress is cleared and the original 25 tiles go back in their starting positions."
+          message="Progress is cleared and the original 25 tiles return to their starting positions. Your custom challenges stay in the optional pool."
           confirmLabel="Reset board"
           onCancel={() => setConfirm(null)}
           onConfirm={doReset}
@@ -202,10 +313,48 @@ export default function Bingo() {
         </ConfirmDialog>
       )}
 
+      {editingTile && (
+        <Modal title="Edit custom challenge" onClose={() => setEditingTile(null)} size="sm">
+          <form className="form" onSubmit={saveCustomChallenge}>
+            <label className="field__label" htmlFor={editInputId}>Challenge text</label>
+            <input
+              id={editInputId}
+              className="input"
+              value={editText}
+              maxLength={MAX_TILE_TEXT_LENGTH}
+              required
+              autoFocus
+              onChange={(event) => {
+                setEditText(event.target.value)
+                setEditError('')
+              }}
+            />
+            {editError && <p className="field__error" role="alert">{editError}</p>}
+            <div className="modal__actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setEditingTile(null)}>Cancel</button>
+              <button type="submit" className="btn btn--primary" disabled={!editText.trim()}>Save challenge</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {deleteTileId && (
+        <ConfirmDialog
+          title="Delete this custom challenge?"
+          message={`${tileById(bingo, deleteTileId)?.text || 'This challenge'} will be removed from your optional pool.`}
+          confirmLabel="Delete challenge"
+          onCancel={() => setDeleteTileId(null)}
+          onConfirm={() => {
+            setBingo(deleteCustomTile(bingo, deleteTileId))
+            setDeleteTileId(null)
+          }}
+        />
+      )}
+
       {picker?.kind === 'cell' && (
         <Modal title="Replace with a pool tile" onClose={() => setPicker(null)} size="sm">
           <p className="modal__message">
-            Replacing <strong>{TILE_BY_ID[bingo.cells[picker.index]].text}</strong>. It moves to the pool and loses its progress.
+            Replacing <strong>{tileById(bingo, bingo.cells[picker.index]).text}</strong>. It moves to the pool and loses its progress.
           </p>
           <ul className="picker">
             {pool.map((id, i) => (
@@ -216,7 +365,7 @@ export default function Bingo() {
                   onClick={() => pickReplacement(picker.index, id)}
                   data-autofocus={i === 0 ? true : undefined}
                 >
-                  {TILE_BY_ID[id].text}
+                  {tileById(bingo, id).text}
                 </button>
               </li>
             ))}
@@ -225,7 +374,7 @@ export default function Bingo() {
       )}
 
       {picker?.kind === 'pool' && (
-        <Modal title={`Swap in “${TILE_BY_ID[picker.tileId].text}”`} onClose={() => setPicker(null)} size="sm">
+        <Modal title={`Swap in “${tileById(bingo, picker.tileId).text}”`} onClose={() => setPicker(null)} size="sm">
           <p className="modal__message">Choose which board tile it replaces. The centre tile can't be replaced.</p>
           <ul className="picker picker--grid">
             {bingo.cells.map((id, index) =>
@@ -238,7 +387,7 @@ export default function Bingo() {
                     data-autofocus={index === 0 ? true : undefined}
                   >
                     <span className="picker__num">{index + 1}</span>
-                    {TILE_BY_ID[id].text}
+                    {tileById(bingo, id).text}
                   </button>
                 </li>
               ),

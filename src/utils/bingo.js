@@ -1,7 +1,11 @@
+import { uid } from './id.js'
+
 export const BOARD_SIZE = 5
 export const CELL_COUNT = BOARD_SIZE * BOARD_SIZE
 export const CENTER_INDEX = 12
 export const CENTER_ID = 'b13'
+export const MAX_CUSTOM_TILES = 50
+export const MAX_TILE_TEXT_LENGTH = 60
 
 // The reference board, row by row (left to right, top to bottom).
 export const BOARD_TEXT = [
@@ -66,7 +70,47 @@ export const LINES = [...rows, ...cols, ...diagonals]
 export const defaultBingoState = () => ({
   cells: BOARD_TEXT.map((_, i) => `b${i + 1}`),
   done: {},
+  customTiles: [],
 })
+
+export function tileById(state, id) {
+  return TILE_BY_ID[id] || state.customTiles?.find((tile) => tile.id === id) || null
+}
+
+export function allTileIds(state) {
+  return [...ALL_TILES.map((tile) => tile.id), ...(state.customTiles || []).map((tile) => tile.id)]
+}
+
+export function addCustomTile(state, text) {
+  const clean = text.trim().slice(0, MAX_TILE_TEXT_LENGTH)
+  const duplicate = [...ALL_TILES, ...(state.customTiles || [])].some((tile) => tile.text.toLowerCase() === clean.toLowerCase())
+  if (!clean || duplicate || (state.customTiles || []).length >= MAX_CUSTOM_TILES) return state
+  return { ...state, customTiles: [...(state.customTiles || []), { id: uid('custom'), text: clean }] }
+}
+
+export function updateCustomTile(state, id, text) {
+  const clean = text.trim().slice(0, MAX_TILE_TEXT_LENGTH)
+  const exists = state.customTiles?.some((tile) => tile.id === id)
+  const duplicate = [...ALL_TILES, ...(state.customTiles || [])].some(
+    (tile) => tile.id !== id && tile.text.toLowerCase() === clean.toLowerCase(),
+  )
+  if (!exists || !clean || duplicate) return state
+  return {
+    ...state,
+    customTiles: state.customTiles.map((tile) => (tile.id === id ? { ...tile, text: clean } : tile)),
+  }
+}
+
+export function deleteCustomTile(state, id) {
+  if (state.cells.includes(id) || !state.customTiles?.some((tile) => tile.id === id)) return state
+  const done = { ...state.done }
+  delete done[id]
+  return { ...state, done, customTiles: state.customTiles.filter((tile) => tile.id !== id) }
+}
+
+export function resetBingoState(state) {
+  return { ...defaultBingoState(), customTiles: state.customTiles || [] }
+}
 
 export function completedLines(cells, done) {
   return LINES.filter((line) => line.indices.every((i) => done[cells[i]]))
@@ -99,18 +143,18 @@ export function newlyCompletedLines(prev, next) {
 
 /** Swap a pool (or any off-board) tile into a board position. The centre never moves. */
 export function replaceTile(state, index, newId) {
-  if (index === CENTER_INDEX || !TILE_BY_ID[newId] || state.cells.includes(newId)) return state
+  if (index === CENTER_INDEX || !tileById(state, newId) || state.cells.includes(newId)) return state
   const old = state.cells[index]
   const cells = [...state.cells]
   cells[index] = newId
   const done = { ...state.done }
   delete done[old]
   delete done[newId]
-  return { cells, done }
+  return { ...state, cells, done }
 }
 
 export function poolTileIds(state) {
-  return ALL_TILES.map((t) => t.id).filter((id) => !state.cells.includes(id))
+  return allTileIds(state).filter((id) => !state.cells.includes(id))
 }
 
 function shuffled(list, rng) {
@@ -124,12 +168,12 @@ function shuffled(list, rng) {
 
 /**
  * Randomise the 24 non-centre tiles. Progress stays with each tile. With
- * `includePool`, the 24 are drawn from all 29 non-centre tiles instead, and
+ * `includePool`, the 24 are drawn from all non-centre tiles instead, and
  * tiles that leave the board lose their progress.
  */
 export function shuffleBoard(state, { includePool = false, rng = Math.random } = {}) {
   const source = includePool
-    ? ALL_TILES.map((t) => t.id).filter((id) => id !== CENTER_ID)
+    ? allTileIds(state).filter((id) => id !== CENTER_ID)
     : state.cells.filter((_, i) => i !== CENTER_INDEX)
   const picked = shuffled(source, rng).slice(0, CELL_COUNT - 1)
   let k = 0
@@ -138,13 +182,32 @@ export function shuffleBoard(state, { includePool = false, rng = Math.random } =
   cells.forEach((id) => {
     if (state.done[id]) done[id] = true
   })
-  return { cells, done }
+  return { ...state, cells, done }
 }
 
 export function validateBingoState(value) {
   if (!value || !Array.isArray(value.cells) || value.cells.length !== CELL_COUNT) return false
   if (!value.done || typeof value.done !== 'object' || Array.isArray(value.done)) return false
+  const customTiles = value.customTiles === undefined ? [] : value.customTiles
+  if (
+    !Array.isArray(customTiles) ||
+    customTiles.length > MAX_CUSTOM_TILES ||
+    !customTiles.every(
+      (tile) =>
+        tile &&
+        typeof tile.id === 'string' &&
+        tile.id.startsWith('custom_') &&
+        !TILE_BY_ID[tile.id] &&
+        typeof tile.text === 'string' &&
+        tile.text.trim().length > 0 &&
+        tile.text.length <= MAX_TILE_TEXT_LENGTH,
+    )
+  ) {
+    return false
+  }
+  if (new Set(customTiles.map((tile) => tile.id)).size !== customTiles.length) return false
   if (value.cells[CENTER_INDEX] !== CENTER_ID) return false
   if (new Set(value.cells).size !== CELL_COUNT) return false
-  return value.cells.every((id) => TILE_BY_ID[id])
+  const ids = new Set([...ALL_TILES.map((tile) => tile.id), ...customTiles.map((tile) => tile.id)])
+  return value.cells.every((id) => ids.has(id))
 }

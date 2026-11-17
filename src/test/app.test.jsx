@@ -60,6 +60,12 @@ describe('navigation', () => {
       'page',
     )
   })
+
+  it('opens the interactive map inside the app', () => {
+    renderApp('#/map')
+    expect(screen.getByRole('heading', { level: 1, name: 'Leonida Map' })).toBeInTheDocument()
+    expect(screen.getByTitle('Interactive State of Leonida map')).toHaveAttribute('src', 'https://map.stateofleonida.net/')
+  })
 })
 
 describe('bingo page', () => {
@@ -125,6 +131,66 @@ describe('bingo page', () => {
     const tiles = within(screen.getByRole('group', { name: /bingo board/ })).getAllByRole('button')
     expect(tiles).toHaveLength(25)
     expect(tiles[12]).toHaveAccessibleName(/^Start GTA VI, tile 13/)
+  })
+
+  it('adds a custom challenge, swaps it onto the board and edits its text', async () => {
+    const user = userEvent.setup()
+    renderApp('#/bingo')
+    const input = screen.getByLabelText('New challenge')
+    await user.type(input, 'Find a hidden landmark')
+    await user.click(screen.getByRole('button', { name: /^Add$/ }))
+    await user.click(screen.getByRole('button', { name: 'Swap in Find a hidden landmark' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: /First carjack/ }))
+    expect(screen.getByRole('button', { name: /^Find a hidden landmark, tile 1/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Edit challenge Find a hidden landmark' }))
+    const edit = screen.getByLabelText('Challenge text')
+    await user.clear(edit)
+    await user.type(edit, 'Find the lighthouse')
+    await user.click(screen.getByRole('button', { name: 'Save challenge' }))
+    expect(screen.getByRole('button', { name: /^Find the lighthouse, tile 1/ })).toBeInTheDocument()
+  })
+})
+
+describe('streamer settings', () => {
+  it('updates player names and masks personal content across the app', async () => {
+    const user = userEvent.setup()
+    renderApp('#/checklist')
+    await user.type(screen.getByLabelText('Add a custom item to Food & Drinks'), 'Private prep task')
+    await user.click(screen.getByRole('button', { name: 'Add item to Food & Drinks' }))
+
+    await goTo('control')
+    await user.type(screen.getByLabelText(/^Note/, { selector: '#handover-note' }), 'Private handover details')
+    await user.click(screen.getByRole('button', { name: 'Simphiwe takes over' }))
+    await user.type(screen.getByLabelText('Write a note'), 'Private control reminder')
+    await user.click(screen.getByRole('button', { name: 'Add note' }))
+
+    await goTo('settings')
+    const firstName = screen.getByLabelText('Player 1 display name')
+    await user.clear(firstName)
+    await user.type(firstName, 'Nova')
+    await user.click(screen.getByRole('button', { name: 'Save names' }))
+
+    await goTo('calendar')
+    expect(screen.getAllByText('Nova').length).toBeGreaterThan(0)
+
+    await goTo('settings')
+    await user.click(screen.getByRole('checkbox', { name: 'Off' }))
+    await goTo('calendar')
+    expect(screen.getAllByText('Player 1').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Nova')).not.toBeInTheDocument()
+    expect(screen.queryByText('Warm-up session before launch.')).not.toBeInTheDocument()
+
+    await goTo('checklist')
+    expect(screen.getByText('Private checklist item')).toBeInTheDocument()
+    expect(screen.queryByText('Private prep task')).not.toBeInTheDocument()
+
+    await goTo('control')
+    expect(screen.getByText('Handover note hidden in streamer mode.')).toBeInTheDocument()
+    expect(screen.getByText('Private note hidden in streamer mode.')).toBeInTheDocument()
+    expect(screen.queryByText('Private handover details')).not.toBeInTheDocument()
+    expect(screen.queryByText('Private control reminder')).not.toBeInTheDocument()
+    expect(screen.getByText('Turn off streamer mode to write a private note.')).toBeInTheDocument()
   })
 })
 

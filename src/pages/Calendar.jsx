@@ -19,10 +19,11 @@ import {
   sortShifts,
   suggestNewShift,
 } from '../utils/schedule.js'
-import { PLAYER_IDS, PLAYERS } from '../utils/constants.js'
+import { PLAYER_IDS } from '../utils/constants.js'
 import { dayKey, formatDateTime, formatDayLabel, formatDuration, formatTime, startOfDay } from '../utils/time.js'
+import { playerName } from '../utils/settings.js'
 
-function ControllerBanner({ gaming, live, now }) {
+function ControllerBanner({ gaming, live, now, settings }) {
   if (gaming) {
     const accent = gaming.player === 'simphiwe' ? 'turq' : gaming.player === 'both' ? 'purple' : 'pink'
     return (
@@ -30,10 +31,10 @@ function ControllerBanner({ gaming, live, now }) {
         <p className="eyebrow">On the controller</p>
         <p className="controller__name">
           <span className="controller__pulse" aria-hidden="true" />
-          {PLAYERS[gaming.player].name}
+          {playerName(gaming.player, settings)}
         </p>
         <p className="controller__sub">
-          {gaming.title || 'Gaming'} until {formatTime(gaming.end)} · {formatDuration(gaming.end - now)} left
+          {settings.streamerMode ? ACTIVITY_TYPES[gaming.type].label : gaming.title || 'Gaming'} until {formatTime(gaming.end)} · {formatDuration(gaming.end - now)} left
         </p>
       </section>
     )
@@ -45,14 +46,21 @@ function ControllerBanner({ gaming, live, now }) {
       <p className="controller__name controller__name--idle">Nobody scheduled</p>
       <p className="controller__sub">
         {breaks.length
-          ? breaks.map((s) => `${PLAYERS[s.player].name}: ${s.title || ACTIVITY_TYPES[s.type].label}`).join(' · ')
+          ? breaks
+              .map(
+                (s) =>
+                  `${playerName(s.player, settings)}: ${
+                    settings.streamerMode ? ACTIVITY_TYPES[s.type].label : s.title || ACTIVITY_TYPES[s.type].label
+                  }`,
+              )
+              .join(' · ')
           : 'No gaming shift is running right now.'}
       </p>
     </section>
   )
 }
 
-function PlayerTotals({ id, totals }) {
+function PlayerTotals({ id, totals, settings }) {
   const t = totals[id]
   const pct = t.gaming.planned ? (t.gaming.done / t.gaming.planned) * 100 : 0
   return (
@@ -78,14 +86,14 @@ function PlayerTotals({ id, totals }) {
           <dd>{formatDuration(t.rest.done)}</dd>
         </div>
       </dl>
-      <ProgressBar value={pct} accent={id === 'simphiwe' ? 'turq' : 'pink'} label={`${PLAYERS[id].name} gaming progress`} />
+      <ProgressBar value={pct} accent={id === 'simphiwe' ? 'turq' : 'pink'} label={`${playerName(id, settings)} gaming progress`} />
     </article>
   )
 }
 
 export default function Calendar() {
   const now = useNow()
-  const { shifts, addShift, updateShift, deleteShift, resetSchedule } = useStore()
+  const { shifts, addShift, updateShift, deleteShift, resetSchedule, settings } = useStore()
   const [editor, setEditor] = useState(null) // { mode, initial }
   const [toDelete, setToDelete] = useState(null)
   const [confirmReset, setConfirmReset] = useState(false)
@@ -150,7 +158,7 @@ export default function Calendar() {
       </header>
 
       <div className="calendar-top">
-        <ControllerBanner gaming={gaming} live={live} now={now} />
+        <ControllerBanner gaming={gaming} live={live} now={now} settings={settings} />
         <section className="card next-shift" aria-label="Next shift">
           <p className="eyebrow">
             <Hourglass size={13} aria-hidden="true" /> Next shift
@@ -159,7 +167,7 @@ export default function Calendar() {
             <>
               <CountdownDisplay ms={next.start - now} compact />
               <p className="next-shift__what">
-                <PlayerBadge player={next.player} /> · {next.title || ACTIVITY_TYPES[next.type].label}
+                <PlayerBadge player={next.player} /> · {settings.streamerMode ? ACTIVITY_TYPES[next.type].label : next.title || ACTIVITY_TYPES[next.type].label}
               </p>
               <p className="next-shift__when">Starts {formatDateTime(next.start)}</p>
             </>
@@ -171,7 +179,7 @@ export default function Calendar() {
 
       <div className="totals-row">
         {PLAYER_IDS.map((id) => (
-          <PlayerTotals key={id} id={id} totals={totals} />
+          <PlayerTotals key={id} id={id} totals={totals} settings={settings} />
         ))}
       </div>
 
@@ -255,7 +263,7 @@ export default function Calendar() {
       {toDelete && (
         <ConfirmDialog
           title="Delete this shift?"
-          message={`${toDelete.title || ACTIVITY_TYPES[toDelete.type].label} (${PLAYERS[toDelete.player].name}, ${formatTime(toDelete.start)} to ${formatTime(toDelete.end)}) will be removed from the schedule.`}
+          message={`${settings.streamerMode ? ACTIVITY_TYPES[toDelete.type].label : toDelete.title || ACTIVITY_TYPES[toDelete.type].label} (${playerName(toDelete.player, settings)}, ${formatTime(toDelete.start)} to ${formatTime(toDelete.end)}) will be removed from the schedule.`}
           confirmLabel="Delete shift"
           onCancel={() => setToDelete(null)}
           onConfirm={() => {

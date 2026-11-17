@@ -4,6 +4,7 @@ import { STORAGE_KEYS } from '../utils/constants.js'
 import { defaultSchedule, validateSchedule } from '../utils/schedule.js'
 import { defaultBingoState, validateBingoState } from '../utils/bingo.js'
 import { defaultChecklistState, validateChecklist } from '../utils/checklist.js'
+import { defaultSettingsState, validateSettingsState } from '../utils/settings.js'
 import {
   elapsedMs,
   endTimer,
@@ -26,6 +27,17 @@ export function StoreProvider({ children }) {
   const [timer, setTimer] = useLocalStorage(STORAGE_KEYS.timer, initialTimer, validateTimer)
   const [handovers, setHandovers] = useLocalStorage(STORAGE_KEYS.handovers, () => [], validateHandovers)
   const [notes, setNotes] = useLocalStorage(STORAGE_KEYS.notes, () => [], validateNotes)
+  const [settings, setSettings] = useLocalStorage(STORAGE_KEYS.settings, defaultSettingsState, validateSettingsState)
+
+  const updateSettings = useCallback(
+    (patch) =>
+      setSettings((current) => ({
+        ...current,
+        ...patch,
+        names: patch.names ? { ...current.names, ...patch.names } : current.names,
+      })),
+    [setSettings],
+  )
 
   // Schedule
   const addShift = useCallback(
@@ -95,6 +107,8 @@ export function StoreProvider({ children }) {
       notes,
       addNote,
       deleteNote,
+      settings,
+      updateSettings,
     }),
     [
       shifts,
@@ -117,6 +131,8 @@ export function StoreProvider({ children }) {
       notes,
       addNote,
       deleteNote,
+      settings,
+      updateSettings,
     ],
   )
 

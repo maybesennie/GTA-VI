@@ -20,10 +20,11 @@ export function Brand() {
 
 function SideStatus() {
   const now = useNow()
-  const { timer } = useStore()
+  const { timer, settings } = useStore()
   return (
     <div className="side-status">
       <StatusPill status={timer.status} />
+      {settings.streamerMode && <p className="streamer-indicator">Streamer mode on</p>}
       <p className="side-status__clock" aria-label="South Africa time">
         {formatSAClock(now)}
       </p>
@@ -54,12 +55,13 @@ export function Sidebar({ active }) {
 }
 
 export function MobileHeader({ active }) {
-  const { timer } = useStore()
+  const { timer, settings } = useStore()
   const current = ROUTES.find((r) => r.id === active)
   return (
     <header className="mobile-header">
       <Brand />
       <div className="mobile-header__right">
+        {settings.streamerMode && <span className="streamer-indicator">Streamer mode</span>}
         <StatusPill status={timer.status} />
         <span className="visually-hidden">Current section: {current?.label}</span>
       </div>

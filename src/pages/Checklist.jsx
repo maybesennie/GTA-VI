@@ -16,7 +16,7 @@ import {
   toggleItem,
 } from '../utils/checklist.js'
 
-function AddItemForm({ category, onAdd }) {
+function AddItemForm({ category, onAdd, streamerMode }) {
   const [text, setText] = useState('')
   const id = useId()
 
@@ -35,6 +35,8 @@ function AddItemForm({ category, onAdd }) {
       <input
         id={id}
         className="input input--small"
+        type={streamerMode ? 'password' : 'text'}
+        autoComplete="off"
         value={text}
         maxLength={80}
         placeholder="Add your own item"
@@ -49,7 +51,7 @@ function AddItemForm({ category, onAdd }) {
 }
 
 export default function Checklist() {
-  const { checklist, setChecklist } = useStore()
+  const { checklist, setChecklist, settings } = useStore()
   const [confirmReset, setConfirmReset] = useState(false)
   const [removeCustom, setRemoveCustom] = useState(false)
   const total = overallProgress(checklist)
@@ -125,14 +127,16 @@ export default function Checklist() {
                         <span className="check__box" aria-hidden="true">
                           <Check size={14} strokeWidth={3} />
                         </span>
-                        <span className="check__text">{item.text}</span>
+                        <span className="check__text">
+                          {settings.streamerMode && item.custom ? 'Private checklist item' : item.text}
+                        </span>
                       </label>
                       {item.custom && (
                         <button
                           type="button"
                           className="icon-btn icon-btn--danger"
                           onClick={() => setChecklist((s) => deleteCustomItem(s, category.id, item.id))}
-                          aria-label={`Delete custom item ${item.text}`}
+                          aria-label={`Delete custom item${settings.streamerMode ? '' : ` ${item.text}`}`}
                         >
                           <Trash2 size={15} aria-hidden="true" />
                         </button>
@@ -142,7 +146,11 @@ export default function Checklist() {
                 })}
               </ul>
 
-              <AddItemForm category={category} onAdd={(catId, text) => setChecklist((s) => addCustomItem(s, catId, text))} />
+              <AddItemForm
+                category={category}
+                onAdd={(catId, text) => setChecklist((s) => addCustomItem(s, catId, text))}
+                streamerMode={settings.streamerMode}
+              />
             </section>
           )
         })}

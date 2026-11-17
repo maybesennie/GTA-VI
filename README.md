@@ -24,7 +24,7 @@ To stop the app press `Ctrl + C` in the terminal.
 | --- | --- |
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build |
-| `npm test` | Run the 75 automated tests |
+| `npm test` | Run the automated tests |
 
 ### If something goes wrong
 
@@ -37,8 +37,11 @@ To stop the app press `Ctrl + C` in the terminal.
 - **Overview**: countdown to 19 Nov 2026 00:00 SAST (becomes an elapsed timer once the marathon starts), South Africa clock, who is on duty, next rotation, prep and bingo progress.
 - **Marathon Calendar**: the starting schedule is pre-loaded. Add, edit and delete shifts, switch players, add sleep, meal and shower/personal breaks, and add notes. The live shift, next-shift countdown, per-player gaming and rest totals, and a 24h "at a glance" strip update in real time. Times everywhere are South Africa time (SAST, UTC+2), whatever your PC's timezone is.
 - **GTA VI Bingo**: the 25 tiles in the original order with START GTA VI in the centre. Tap to complete, tap again to undo. Rows, columns and diagonals trigger a BINGO overlay. *Swap tiles* (or *Swap in* on the pool) puts any of the five optional challenges on the board. *Shuffle* keeps the centre fixed. *Reset board* asks first.
+- **Your challenges**: add, rename and remove up to 50 custom bingo challenges, then swap them onto the board. Custom challenges are saved with the board.
 - **Preparation Checklist**: five categories with percentages, custom items you can delete, and a reset with confirmation.
 - **Marathon Control**: Start / Pause / Resume / End with a persistent clock (it keeps counting correctly after a refresh or closing the browser), handover log, notes for each player, and a history of completed shifts.
+- **Leonida Map**: explore the community-created State of Leonida interactive map in an embedded section, or open it in a separate tab.
+- **Settings**: change both player display names and enable **Streamer mode**. Streamer mode masks names, custom schedule titles/notes, handover and control notes, and custom preparation labels. Bingo challenges remain visible for viewers. This is a display aid only; data remains in browser storage and is not protected from browser tools or other apps.
 
 ## Notes
 
@@ -51,7 +54,7 @@ To stop the app press `Ctrl + C` in the terminal.
 ```
 src/
   components/   reusable UI (modal, shift card, bingo board, rings, nav…)
-  pages/        Overview, Calendar, Bingo, Checklist, Control
+  pages/        Overview, Calendar, Bingo, Checklist, Control, Map, Settings
   context/      StoreContext: all persisted state
   hooks/        useLocalStorage, useNow (shared clock), useHashRoute
   utils/        pure logic: time, schedule, bingo, checklist, marathon timer
